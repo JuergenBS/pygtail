@@ -29,6 +29,7 @@ from os.path import exists, getsize
 import sys
 import glob
 import gzip
+import io
 from optparse import OptionParser
 from atomicwrites import atomic_write
 
@@ -65,7 +66,7 @@ class Pygtail(object):
     full_lines    Only log when line ends in a newline `\n` (default: False)
     """
     def __init__(self, filename, offset_file=None, paranoid=False, copytruncate=True,
-                 every_n=0, on_update=False, read_from_end=False, log_patterns=None, full_lines=False):
+                 every_n=0, on_update=False, read_from_end=False, log_patterns=None, full_lines=False, encoding=None):
         self.filename = filename
         self.paranoid = paranoid
         self.every_n = every_n
@@ -74,6 +75,7 @@ class Pygtail(object):
         self.read_from_end = read_from_end
         self.log_patterns = log_patterns
         self._full_lines = full_lines
+        self.encoding = encoding
         self._offset_file = offset_file or "%s.offset" % self.filename
         self._offset_file_inode = 0
         self._offset = 0
@@ -176,8 +178,10 @@ class Pygtail(object):
             filename = self._rotated_logfile or self.filename
             if filename.endswith('.gz'):
                 self._fh = gzip.open(filename, 'r')
+            elif PY3:
+                self._fh = open(filename, "r", 1, encoding=self.encoding)
             else:
-                self._fh = open(filename, "r", 1)
+                self._fh = io.open(filename, "r", 1, encoding=self.encoding)
             if self.read_from_end and not exists(self._offset_file):
                 self._fh.seek(0, os.SEEK_END)
             else:
@@ -310,6 +314,8 @@ def main():
              " You may use this multiple times to provide multiple patterns.")
     cmdline.add_option("--full_lines", action="store_true",
                        help="Only log when line ends in a newline (\\n)")
+    cmdline.add_option("--encoding", action="store",
+        help="Encoding to use for reading files (default: system encoding)")
     cmdline.add_option("--version", action="store_true",
         help="Print version and exit.")
 
@@ -331,7 +337,8 @@ def main():
                       copytruncate=not options.no_copytruncate,
                       read_from_end=options.read_from_end,
                       log_patterns=options.log_pattern,
-                      full_lines=options.full_lines
+                      full_lines=options.full_lines,
+                      encoding=options.encoding
                       )
 
     for line in pygtail:
