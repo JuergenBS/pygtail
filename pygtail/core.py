@@ -192,7 +192,7 @@ class Pygtail(object):
         if self.on_update:
             self.on_update()
         offset = self._filehandle().tell()
-        inode = stat(self.filename).st_ino
+        inode = fstat(self._filehandle().fileno()).st_ino
         with atomic_write(self._offset_file, overwrite=True) as fh:
             fh.write("%s\n%s\n" % (inode, offset))
         self._since_update = 0
