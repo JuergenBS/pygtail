@@ -30,6 +30,7 @@ import sys
 import glob
 import gzip
 from optparse import OptionParser
+from atomicwrites import atomic_write
 
 __version__ = '0.11.1'
 
@@ -192,9 +193,8 @@ class Pygtail(object):
             self.on_update()
         offset = self._filehandle().tell()
         inode = stat(self.filename).st_ino
-        fh = open(self._offset_file, "w")
-        fh.write("%s\n%s\n" % (inode, offset))
-        fh.close()
+        with atomic_write(self._offset_file, overwrite=True) as fh:
+            fh.write("%s\n%s\n" % (inode, offset))
         self._since_update = 0
 
     def _determine_rotated_logfile(self):
